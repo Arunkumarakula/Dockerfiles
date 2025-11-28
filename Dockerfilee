@@ -1,0 +1,39 @@
+# Dockerfile for Backend Java
+
+# 1. Build Stage   
+# ------------------------------
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
+
+# Set working directory inside container
+WORKDIR /app
+
+# Copy only pom.xml first (to leverage Docker cache for dependencies)
+COPY pom.xml .
+
+# Download dependencies (without running tests)
+RUN mvn dependency:go-offline -B
+
+# Copy the rest of the project
+COPY . .
+
+# Build application (skip tests for faster build)
+RUN mvn clean package -DskipTests
+
+# ------------------------------
+# 2. Runtime Stage
+# ------------------------------
+FROM eclipse-temurin:17-jdk-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy JAR file from builder stage
+COPY --from=builder /app/target/*.jar app.jar
+
+# Expose port (change if your app runs on another port)
+EXPOSE 8080
+
+# Run the app
+ENTRYPOINT ["java","-jar","/app/app.jar"]
+
+
